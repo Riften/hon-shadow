@@ -5,8 +5,9 @@ go 1.13
 require (
 	github.com/ipfs/go-ipfs-util v0.0.1 // indirect
 	github.com/libp2p/go-conn-security v0.1.0 // indirect
-	github.com/libp2p/go-libp2p v6.0.23+incompatible // indirect
+	github.com/libp2p/go-libp2p v6.0.23+incompatible
 	github.com/libp2p/go-libp2p-circuit v0.2.1 // indirect
+	github.com/libp2p/go-libp2p-core v0.5.1
 	github.com/libp2p/go-libp2p-host v0.1.0 // indirect
 	github.com/libp2p/go-libp2p-interface-connmgr v0.1.0 // indirect
 	github.com/libp2p/go-libp2p-interface-pnet v0.1.0 // indirect
