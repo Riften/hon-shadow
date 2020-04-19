@@ -11,3 +11,7 @@ import (
 func NewHost(ctx context.Context) (p2phost.Host, error){
 	return libp2p.New(ctx)
 }
+
+func NewHost2(ctx context.Context)(p2phost.Host, error){
+	return nil, nil
+}

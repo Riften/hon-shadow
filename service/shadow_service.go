@@ -6,3 +6,7 @@ import"github.com/libp2p/go-libp2p-core/protocol"
 const shadowServiceProtocol = protocol.ID("/textile/shadow_test/1.0.0")
 
 
+func Test() {
+
+}
+

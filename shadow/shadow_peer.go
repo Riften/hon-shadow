@@ -7,3 +7,4 @@ type ShadowPeer struct{
 	host p2phost.Host
 }
 
+
