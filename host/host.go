@@ -2,7 +2,6 @@ package host
 
 import (
 	"context"
-	"github.com/libp2p/go-libp2p"
 	p2phost "github.com/libp2p/go-libp2p-core/host"
 )
 
