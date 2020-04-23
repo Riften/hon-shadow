@@ -16,9 +16,10 @@ import (
 	"github.com/libp2p/go-msgio"
 	"github.com/Riften/hon-shadow/pb"
 	ggio "github.com/gogo/protobuf/io"
+	p2phost "github.com/libp2p/go-libp2p-core/host"
 )
 
-func messageSenderForPeer(ctx context.Context, p peer.ID, srv Service) (*messageSender, error) {
+func messageSenderForPeer(ctx context.Context, p peer.ID, srv Service, h p2phost.Host) (*messageSender, error) {
 	//srv.smlk.Lock()
 	//ms, ok := srv.strmap[p]
 	ms, ok := srv.GetSender(p)
@@ -28,7 +29,11 @@ func messageSenderForPeer(ctx context.Context, p peer.ID, srv Service) (*message
 	}
 
 	// Create a new messageSender
-	ms = &messageSender{p: p, protocol: srv.Protocol()}
+	ms = &messageSender{
+		p: p,
+		protocol: srv.Protocol(),
+		h:h,
+	}
 	srv.AddSender(ms)
 
 	if err := ms.prepOrInvalidate(ctx); err != nil {
@@ -62,6 +67,7 @@ type messageSender struct {
 
 	//srv *Service
 	protocol protocol.ID
+	h p2phost.Host
 
 	invalid   bool
 	singleMes int
@@ -96,7 +102,8 @@ func (ms *messageSender) prep(ctx context.Context) error {
 		return nil
 	}
 
-	nstr, err := ms.srv.Node().PeerHost.NewStream(ctx, ms.p, ms.srv.handler.Protocol())
+	//nstr, err := ms.srv.Node().PeerHost.NewStream(ctx, ms.p, ms.srv.handler.Protocol())
+	nstr, err := ms.h.NewStream(ctx, ms.p, ms.protocol)
 	if err != nil {
 		return err
 	}

@@ -2,11 +2,11 @@ package main
 
 import (
 	//"crypto/rand"
-	"context"
+	//"context"
 	"fmt"
 	"os"
-	host "github.com/Riften/hon-shadow/host"
-	"github.com/Riften/hon-shadow/service"
+	//host "github.com/Riften/hon-shadow/host"
+	//"github.com/Riften/hon-shadow/service"
 	"github.com/Riften/hon-shadow/cmd"
 	//"github.com/libp2p/go-libp2p-core/crypto"
 )

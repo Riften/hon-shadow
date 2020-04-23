@@ -66,7 +66,8 @@ func InitRepo(conf InitConfig) error {
 	}
 
 	log.Debug("create db")
-	sqliteDb, err := db.Create(repoPath, "")
+	//sqliteDb, err := db.Create(repoPath, "")
+	_, err = db.Create(repoPath, "")
 	if err != nil {
 		return err
 	}
