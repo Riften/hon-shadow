@@ -4,18 +4,20 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
 
-	"github.com/SJTU-OpenNetwork/go-ipfs/core"
-	"github.com/SJTU-OpenNetwork/go-ipfs/namesys"
-	loader "github.com/SJTU-OpenNetwork/go-ipfs/plugin/loader"
-	"github.com/SJTU-OpenNetwork/go-ipfs/repo/fsrepo"
+	//"github.com/SJTU-OpenNetwork/go-ipfs/core"
+	//"github.com/SJTU-OpenNetwork/go-ipfs/namesys"
+	//loader "github.com/SJTU-OpenNetwork/go-ipfs/plugin/loader"
+	//"github.com/SJTU-OpenNetwork/go-ipfs/repo/fsrepo"
 	logging "github.com/ipfs/go-log"
 	libp2pc "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/SJTU-OpenNetwork/hon-textile/ipfs"
-	"github.com/SJTU-OpenNetwork/hon-textile/repo/config"
+	//"github.com/SJTU-OpenNetwork/hon-textile/ipfs"
+	"github.com/Riften/hon-shadow/repo/config"
+	"github.com/Riften/hon-shadow/utils"
 )
 
 var log = logging.Logger("tex-repo")
@@ -27,48 +29,41 @@ var ErrRepoCorrupted = fmt.Errorf("repo is corrupted")
 
 const Repover = "19"
 
-func Init(repoPath string, mobile bool, server bool) error {
+
+// Judge whether this repo is already initialized.
+//		- For now we just check whether there is files in this repo
+func isInitialized(repoPath string) (bool, error) {
+	files, err := ioutil.ReadDir(repoPath)
+	if err != nil {
+		return false, err
+	}
+	if len(files) > 1 {
+		return true, nil
+	}
+	return false, nil
+}
+
+func Init(repoPath string) error {
+	// Make directory
+	if !utils.DirectoryExists(repoPath) {
+		err := os.Mkdir(repoPath, os.ModePerm)
+		if err != nil {return err}
+	} else {
+		isInit, err := isInitialized(repoPath)
+		if err != nil {
+			return err
+		}
+		if isInit {
+			return ErrRepoExists
+		}
+	}
 	err := checkWriteable(repoPath)
 	if err != nil {
 		return err
 	}
 
-	if fsrepo.IsInitialized(repoPath) {
-		return ErrRepoExists
-	}
-	log.Infof("initializing repo at %s", repoPath)
 
-	// create an identity for the ipfs peer
-	sk, _, err := libp2pc.GenerateEd25519Key(rand.Reader)
-	if err != nil {
-		return err
-	}
-	peerIdentity, err := ipfs.IdentityConfig(sk)
-	if err != nil {
-		return err
-	}
-
-	// initialize ipfs config
-	conf, err := config.InitIpfs(peerIdentity, mobile, server)
-	if err != nil {
-		return err
-	}
-
-	_, err = LoadPlugins(repoPath)
-	if err != nil {
-		return err
-	}
-
-	err = fsrepo.Init(repoPath, conf)
-	if err != nil {
-		return err
-	}
-
-	// create a folder for bots
-	err = initializeBotFolder(repoPath)
-	if err != nil {
-		return err
-	}
+	fmt.Printf("initializing repo at %s", repoPath)
 
 	// write default textile config
 	tconf, err := config.Init()
@@ -80,64 +75,7 @@ func Init(repoPath string, mobile bool, server bool) error {
 		return err
 	}
 
-	// write repo version
-	repoverFile, err := os.Create(path.Join(repoPath, "repover"))
-	if err != nil {
-		return err
-	}
-	defer repoverFile.Close()
-	_, err = repoverFile.Write([]byte(Repover))
-	if err != nil {
-		return err
-	}
-
-	return initializeIpnsKeyspace(repoPath)
-}
-
-func InitPrivate(repoPath string, mobile bool, server bool) error {
-	// write swarm key
-    err := Init(repoPath, mobile, server)
-    if err != nil {
-        return err
-    }
-
-    return writeSwarmKey(repoPath)
-}
-
-//Write the swarm key for ipfs private network
-func writeSwarmKey(repoPath string) (error){
-        swarm, err := os.Create(path.Join(repoPath, "swarm.key"))
-        if err != nil {
-                return err
-        }
-        defer swarm.Close()
-        data := []byte("/key/swarm/psk/1.0.0/\n/base16/\n7894ae706f3b54675785afd43a5a554463744e89594ab6e274fb817ccd9a58d4")
-        if _, err := swarm.Write(data); err != nil {
-                return err
-        }
-        return nil
-}
-
-func LoadPlugins(repoPath string) (*loader.PluginLoader, error) {
-	// check if repo is accessible before loading plugins
-	_, err := checkPermissions(repoPath)
-	if err != nil {
-		return nil, err
-	}
-
-	plugins, err := loader.NewPluginLoader(repoPath)
-	if err != nil {
-		return nil, fmt.Errorf("error loading preloaded plugins: %s", err)
-	}
-
-	if err := plugins.Initialize(); err != nil {
-		return nil, nil
-	}
-
-	if err := plugins.Inject(); err != nil {
-		return nil, nil
-	}
-	return plugins, nil
+	return nil
 }
 
 func checkWriteable(dir string) error {
@@ -178,23 +116,6 @@ func initializeBotFolder(repoPath string) error {
 	return err
 }
 
-func initializeIpnsKeyspace(repoRoot string) error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	r, err := fsrepo.Open(repoRoot)
-	if err != nil { // NB: repo is owned by the node
-		return err
-	}
-
-	nd, err := core.NewNode(ctx, &core.BuildCfg{Repo: r})
-	if err != nil {
-		return err
-	}
-	defer nd.Close()
-
-	return namesys.InitializeKeyspace(ctx, nd.Namesys, nd.Pinning, nd.PrivateKey)
-}
 
 func checkPermissions(path string) (bool, error) {
 	_, err := os.Open(path)

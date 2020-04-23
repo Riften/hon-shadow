@@ -7,33 +7,21 @@ import (
 	"os"
 	"path"
 
-	"github.com/SJTU-OpenNetwork/hon-textile/common"
+	//"github.com/SJTU-OpenNetwork/hon-textile/common"
 )
 
 // Config is used to load textile config files.
 type Config struct {
-	Account   Account      // local node's account (public info only)
+	//Account   Account      // local node's account (public info only)
 	Addresses Addresses    // local node's addresses
 	API       API          // local node's API settings
 	Gateway   Gateway      // local node's Gateway settings
 	Logs      Logs         // local node's log settings
-	IsMobile  bool         // local node is setup for mobile
-	IsServer  bool         // local node is setup for a server w/ a public IP
-	IsShadow  bool         // local node is setup for a server w/ a public IP
-	Cafe      Cafe         // local node cafe settings
-	Bots      []EnabledBot // local node enabled bots
-}
-
-// EnabledBot store settings for an enabled bot
-type EnabledBot struct {
-	ID      string // the id of the bot
-	CafeAPI bool   // if true the bot will be available (public) over the Cafe API
-}
-
-// Account store public account info
-type Account struct {
-	Address string // public key (seed is stored in the _possibly_ encrypted datastore)
-	Thread  string // thread id of the default account thread used for sync between account peers
+	//IsMobile  bool         // local node is setup for mobile
+	//IsServer  bool         // local node is setup for a server w/ a public IP
+	//IsShadow  bool         // local node is setup for a server w/ a public IP
+	//Cafe      Cafe         // local node cafe settings
+	//Bots      []EnabledBot // local node enabled bots
 }
 
 // Addresses stores the (string) bind addresses for the node.
@@ -84,10 +72,6 @@ type CafeHost struct {
 // Init returns the default textile config
 func Init() (*Config, error) {
 	return &Config{
-		Account: Account{
-			Address: "",
-			Thread:  "",
-		},
 		Addresses: Addresses{
 			API:       "127.0.0.1:40600",
 			CafeAPI:   "0.0.0.0:40601",
@@ -96,7 +80,7 @@ func Init() (*Config, error) {
 		},
 		API: API{
 			HTTPHeaders: HTTPHeaders{
-				"Server": {"go-textile/" + common.Version},
+				"Server": {"go-textile/" + "0.7.5"},
 				// Explicitly allow all methods
 				"Access-Control-Allow-Methods": {
 					http.MethodConnect,
@@ -155,18 +139,6 @@ func Init() (*Config, error) {
 		Logs: Logs{
 			LogToDisk: true,
 		},
-		Cafe: Cafe{
-			Host: CafeHost{
-				Open:        false,
-				URL:         "",
-				NeighborURL: "",
-				SizeLimit:   0,
-			},
-		},
-		IsMobile: false,
-		IsServer: false,
-        IsShadow: false,
-		Bots:     []EnabledBot{},
 	}, nil
 }
 

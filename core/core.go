@@ -25,10 +25,10 @@ import (
 	"github.com/SJTU-OpenNetwork/hon-textile/broadcast"
 	"github.com/SJTU-OpenNetwork/hon-textile/ipfs"
 	"github.com/SJTU-OpenNetwork/hon-textile/keypair"
-	"github.com/SJTU-OpenNetwork/hon-textile/pb"
-	"github.com/SJTU-OpenNetwork/hon-textile/repo"
-	"github.com/SJTU-OpenNetwork/hon-textile/repo/config"
-	"github.com/SJTU-OpenNetwork/hon-textile/repo/db"
+	"github.com/Riften/hon-shadow/pb"
+	"github.com/Riften/hon-shadow/repo"
+	"github.com/Riften/hon-shadow/repo/config"
+	"github.com/Riften/hon-shadow/repo/db"
 	"github.com/SJTU-OpenNetwork/hon-textile/service"
 	"github.com/SJTU-OpenNetwork/hon-textile/stream"
 	"github.com/SJTU-OpenNetwork/hon-textile/util"
@@ -43,7 +43,6 @@ import (
 )
 
 var log = logging.Logger("tex-core")
-
 
 // InitConfig is used to setup a textile node
 type InitConfig struct {
@@ -65,38 +64,6 @@ type Variables struct {
 	//streamBlockIndex map[string]uint64
 }
 
-// Textile is the main Textile node structure
-type Textile struct {
-	repoPath          string
-	pinCode           string
-	config            *config.Config
-	account           *keypair.Full
-	ctx               context.Context
-	stop              func() error
-	node              *core.IpfsNode
-	started           bool
-	datastore         repo.Datastore
-	loadedThreads     []*Thread
-	online            chan struct{}
-	done              chan struct{}
-	updates           chan *pb.AccountUpdate
-	threadUpdates     *broadcast.Broadcaster
-	notifications     chan *pb.Notification
-	threads           *ThreadsService
-	blockOutbox       *BlockOutbox
-	blockDownloads    *BlockDownloads
-	cafe              *CafeService
-	shadow            *shadow.ShadowService //add shadowservice 2020.04.05
-	cafeOutbox        *CafeOutbox
-	cafeOutboxHandler CafeOutboxHandler
-	cafeInbox         *CafeInbox
-	checkMessages     func() error
-	cancelSync        *broadcast.Broadcaster
-	lock              sync.Mutex
-	writer            io.Writer
-	variables         *Variables
-	stream            *stream.StreamService
-}
 
 // common errors
 var ErrAccountRequired = fmt.Errorf("account required")
@@ -109,206 +76,46 @@ var ErrMissingRepoConfig = fmt.Errorf("you must specify InitConfig.RepoPath or I
 func (conf InitConfig) Repo() (string, error) {
 	if len(conf.RepoPath) > 0 {
 		return conf.RepoPath, nil
-	} else if len(conf.BaseRepoPath) > 0 && conf.Account != nil {
-		return path.Join(conf.BaseRepoPath, conf.Account.Address()), nil
 	} else {
 		return "", ErrMissingRepoConfig
 	}
 }
 
-// RepoExists return whether or not the configured repo already exists
-func (conf InitConfig) RepoExists() (bool, error) {
-	repoPath, err := conf.Repo()
-	if err != nil {
-		return false, err
-	}
-	return RepoExists(repoPath), nil
-}
-
-// RepoExists return whether or not the repo at repoPath exists
-func RepoExists(repoPath string) bool {
-	return fsrepo.IsInitialized(repoPath)
-}
-
-// AccountRepoExists return whether or not the repo at repoPath exists
-func AccountRepoExists(baseRepoPath string, accountAddress string) bool {
-	return fsrepo.IsInitialized(path.Join(baseRepoPath, accountAddress))
-}
-
-// InitRepo initializes a new node repo
+// InitRepo initializes a new node repo.
+// It does the following things:
+//		- Create repo directory.
+//		- Create datastore and save it to directory.
 func InitRepo(conf InitConfig) error {
-	exists, err := conf.RepoExists()
-	if err != nil {
-		return err
-	}
-
-	if exists {
-		return repo.ErrRepoExists
-	}
-
-	if conf.Account == nil {
-		return ErrAccountRequired
-	}
-
-	logLevel := &pb.LogLevel{
-		Systems: make(map[string]pb.LogLevel_Level),
-	}
-	if conf.Debug {
-		logLevel = getTextileDebugLevels()
-	}
-
 	repoPath, err := conf.Repo()
-	if err != nil {
-		return err
-	}
-
-	_, err = setLogLevels(repoPath, logLevel, conf.LogToDisk, !conf.IsMobile)
 	if err != nil {
 		return err
 	}
 
 	// init repo
-	if conf.IsPrivate {
-		err = repo.InitPrivate(repoPath, conf.IsMobile, conf.IsServer)
-	} else {
-		err = repo.Init(repoPath, conf.IsMobile, conf.IsServer)
-	}
+	err = repo.Init(repoPath)
 
-	if err != nil {
-		return err
-	}
-
-	rep, err := fsrepo.Open(repoPath)
-	if err != nil {
-		return err
-	}
-
-	defer func() {
-		if err := rep.Close(); err != nil {
-			log.Error(err.Error())
-		}
-	}()
-
-	// apply ipfs config opts
-	//    if conf.IsServer && !conf.IsMobile{
-	err = applySwarmPortConfigOption(rep, conf.SwarmPorts)
-	//    } else {
-	//	    err = applySwarmPortConfigOptionIpv6(rep, conf.SwarmPorts)
-	//    }
 	if err != nil {
 		return err
 	}
 
 	log.Debug("create db")
-	sqliteDb, err := db.Create(repoPath, conf.PinCode)
+	sqliteDb, err := db.Create(repoPath, "")
 	if err != nil {
 		return err
 	}
 	log.Debug("init db")
-	err = sqliteDb.Config().Init(conf.PinCode)
+	err = sqliteDb.Config().Init("")
 	if err != nil {
 		log.Error(err)
 		return err
 	}
-	log.Debug("config")
-	err = sqliteDb.Config().Configure(conf.Account, time.Now())
-	if err != nil {
-		return err
-	}
 
-	log.Debug("config2")
-	ipfsConf, err := rep.Config()
-	if err != nil {
-		return err
-	}
-
-	// add self as a contact
-	err = sqliteDb.Peers().Add(&pb.Peer{
-		Id:      ipfsConf.Identity.PeerID,
-		Address: conf.Account.Address(),
-	})
-	if err != nil {
-		return err
-	}
 
 	log.Debug("finish")
-	return applyTextileConfigOptions(conf)
+	//return applyTextileConfigOptions(conf)
+	return nil
 }
 
-// MigrateRepo runs _all_ repo migrations, including major
-func MigrateRepo(conf MigrateConfig) error {
-	if !fsrepo.IsInitialized(conf.RepoPath) {
-		return repo.ErrRepoDoesNotExist
-	}
-
-	// force open the repo and datastore
-	removeLocks(conf.RepoPath)
-
-	// run _all_ repo migrations if needed
-	return repo.MigrateUp(conf.RepoPath, conf.PinCode, false)
-}
-
-// NewTextile runs a node out of an initialized repo
-func NewTextile(conf RunConfig) (*Textile, error) {
-	if !fsrepo.IsInitialized(conf.RepoPath) {
-		return nil, repo.ErrRepoDoesNotExist
-	}
-
-	// check if repo needs a major migration
-	err := repo.Stat(conf.RepoPath)
-	if err != nil {
-		return nil, err
-	}
-
-	// force open the repo and datastore
-	removeLocks(conf.RepoPath)
-
-	node := &Textile{
-		repoPath:          conf.RepoPath,
-		pinCode:           conf.PinCode,
-		updates:           make(chan *pb.AccountUpdate, 10),
-		threadUpdates:     broadcast.NewBroadcaster(10),
-		notifications:     make(chan *pb.Notification, 10),
-		cafeOutboxHandler: conf.CafeOutboxHandler,
-		checkMessages:     conf.CheckMessages,
-	}
-
-	node.config, err = config.Read(node.repoPath)
-	if err != nil {
-		return nil, err
-	}
-
-	logLevel := &pb.LogLevel{
-		Systems: make(map[string]pb.LogLevel_Level),
-	}
-	if conf.Debug {
-		logLevel = getTextileDebugLevels()
-	}
-	node.writer, err = setLogLevels(node.repoPath, logLevel,
-		node.config.Logs.LogToDisk, !node.config.IsMobile)
-	if err != nil {
-		return nil, err
-	}
-
-	// run all minor repo migrations if needed
-	err = repo.MigrateUp(node.repoPath, node.pinCode, false)
-	if err != nil {
-		return nil, err
-	}
-
-	sqliteDb, err := db.Create(node.repoPath, node.pinCode)
-	if err != nil {
-		return nil, err
-	}
-	node.datastore = sqliteDb
-
-	accnt, err := node.datastore.Config().GetAccount()
-	if err != nil {
-		return nil, err
-	}
-	node.account = accnt
-	return node, nil
-}
 
 // Start creates an ipfs node and starts textile services
 func (t *Textile) Start() error {

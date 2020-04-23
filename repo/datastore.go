@@ -50,24 +50,7 @@ type PeerStore interface {
 	DeleteByAddress(address string) error
 }
 
-type Botstore interface {
-	Queryable
-	AddOrUpdate(key string, value []byte) error
-	Get(key string) *pb.BotKV
-	Delete(key string) error
-}
 
-type FileStore interface {
-	Queryable
-	Add(file *pb.FileIndex) error
-	Get(hash string) *pb.FileIndex
-	GetByPrimary(mill string, checksum string) *pb.FileIndex
-	GetBySource(mill string, source string, opts string) *pb.FileIndex
-	AddTarget(hash string, target string) error
-	RemoveTarget(hash string, target string) error
-	Count() int
-	Delete(hash string) error
-}
 
 type StreamBlockStore interface {
 	Queryable
