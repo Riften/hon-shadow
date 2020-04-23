@@ -1,8 +1,8 @@
 package repo
 
 import (
-	"context"
-	"crypto/rand"
+	//"context"
+	//"crypto/rand"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -14,7 +14,7 @@ import (
 	//loader "github.com/SJTU-OpenNetwork/go-ipfs/plugin/loader"
 	//"github.com/SJTU-OpenNetwork/go-ipfs/repo/fsrepo"
 	logging "github.com/ipfs/go-log"
-	libp2pc "github.com/libp2p/go-libp2p-core/crypto"
+	//libp2pc "github.com/libp2p/go-libp2p-core/crypto"
 	//"github.com/SJTU-OpenNetwork/hon-textile/ipfs"
 	"github.com/Riften/hon-shadow/repo/config"
 	"github.com/Riften/hon-shadow/utils"

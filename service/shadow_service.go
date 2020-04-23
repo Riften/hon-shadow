@@ -11,6 +11,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"io"
+	"sync"
+
 	//"time"
 )
 // Shadow protocal service
@@ -21,12 +23,14 @@ type ShadowService struct {
 	ctx context.Context
 	peerHost host.Host
 	strmap map[peer.ID]*messageSender
+	sLock sync.Mutex
 }
 
 func NewShadowService (ctx context.Context, phost host.Host) *ShadowService {
 	return &ShadowService{
 		ctx: ctx,
 		peerHost: phost,
+		strmap: make(map[peer.ID] *messageSender),
 	}
 }
 
@@ -78,7 +82,7 @@ func (srv *ShadowService) handleInformRes(env *pb.Envelope, pid peer.ID) (*pb.En
 // Core function of service.
 // Give the way to handle a message.
 func (srv *ShadowService) handleNewMessage(s inet.Stream) bool {
-	ctx := srv.ctx
+	//ctx := srv.ctx
 
 	r := msgio.NewVarintReaderSize(s, inet.MessageSizeMax)
 
@@ -167,5 +171,21 @@ func (srv *ShadowService) VerifyEnvelope(env *pb.Envelope, pid peer.ID) error {
 	return nil
 }
 
+func (srv *ShadowService) GetSender(p peer.ID) (*messageSender, bool) {
+	srv.sLock.Lock()
+	defer srv.sLock.Unlock()
+	ms, ok := srv.strmap[p]
+	return ms, ok
+}
 
+func (srv *ShadowService) AddSender(ms *messageSender) {
+	srv.sLock.Lock()
+	defer srv.sLock.Unlock()
+	srv.strmap[ms.p] = ms
+}
 
+func (srv *ShadowService) RemoveSender(p peer.ID) {
+	srv.sLock.Lock()
+	defer srv.sLock.Unlock()
+	delete(srv.strmap, p)
+}

@@ -14,7 +14,7 @@ var log = logging.Logger("tex-core")
 // InitConfig is used to setup a textile node
 type InitConfig struct {
 	RepoPath        string
-	SwarmPorts      string
+	//SwarmPorts      string
 }
 
 
@@ -71,7 +71,7 @@ func InitRepo(conf InitConfig) error {
 		return err
 	}
 	log.Debug("init db")
-	err = sqliteDb.Config().Init("")
+	//err = sqliteDb.Config().Init("")
 	if err != nil {
 		log.Error(err)
 		return err

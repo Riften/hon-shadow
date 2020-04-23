@@ -24,8 +24,6 @@ var pbUnmarshaler = jsonpb.Unmarshaler{
 }
 
 type SQLiteDatastore struct {
-	config             repo.ConfigStore
-	peers              repo.PeerStore
 	streammetas		   repo.StreamMetaStore
 	streamblocks	   repo.StreamBlockStore
 	db                 *sql.DB
@@ -52,8 +50,6 @@ func Create(repoPath, pin string) (*SQLiteDatastore, error) {
     //videoChunkLock := new(sync.Mutex)
     //videoLock := new(sync.Mutex)
 	return &SQLiteDatastore{
-		config:             NewConfigStore(conn, lock, dbPath),
-		peers:              NewPeerStore(conn, lock),
 		streammetas:		NewStreamMetaStore(conn, lock),
 		streamblocks:       NewStreamBlockStore(conn, lock),
 		db:                 conn,
@@ -68,16 +64,6 @@ func (d *SQLiteDatastore) Ping() error {
 func (d *SQLiteDatastore) Close() {
 	_ = d.db.Close()
 }
-
-func (d *SQLiteDatastore) Config() repo.ConfigStore {
-	return d.config
-}
-
-func (d *SQLiteDatastore) Peers() repo.PeerStore {
-	return d.peers
-}
-
-
 
 func (d *SQLiteDatastore) StreamMetas() repo.StreamMetaStore {
 	return d.streammetas

@@ -2,8 +2,8 @@ package db
 
 import (
 	"database/sql"
-	"github.com/SJTU-OpenNetwork/hon-textile/pb"
-	"github.com/SJTU-OpenNetwork/hon-textile/repo"
+	"github.com/Riften/hon-shadow/pb"
+	"github.com/Riften/hon-shadow/repo"
 	"sync"
     "strconv"
 )

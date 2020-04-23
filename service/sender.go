@@ -14,36 +14,40 @@ import (
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-msgio"
-	"github.com/SJTU-OpenNetwork/hon-textile/pb"
+	"github.com/Riften/hon-shadow/pb"
 	ggio "github.com/gogo/protobuf/io"
 )
 
-func messageSenderForPeer(ctx context.Context, p peer.ID, ) (*messageSender, error) {
-	srv.smlk.Lock()
-	ms, ok := srv.strmap[p]
+func messageSenderForPeer(ctx context.Context, p peer.ID, srv Service) (*messageSender, error) {
+	//srv.smlk.Lock()
+	//ms, ok := srv.strmap[p]
+	ms, ok := srv.GetSender(p)
 	if ok {
-		srv.smlk.Unlock()
+		//srv.smlk.Unlock()
 		return ms, nil
 	}
-	ms = &messageSender{p: p, srv: srv}
-	srv.strmap[p] = ms
-	srv.smlk.Unlock()
+
+	// Create a new messageSender
+	ms = &messageSender{p: p, protocol: srv.Protocol()}
+	srv.AddSender(ms)
 
 	if err := ms.prepOrInvalidate(ctx); err != nil {
-		srv.smlk.Lock()
-		defer srv.smlk.Unlock()
+		// ms has been invalidated.
+		//srv.smlk.Lock()
+		//defer srv.smlk.Unlock()
 
-		if msCur, ok := srv.strmap[p]; ok {
+		//if msCur, ok := srv.strmap[p]; ok {
 			// Changed. Use the new one, old one is invalid and
 			// not in the map so we can just throw it away.
-			if ms != msCur {
-				return msCur, nil
-			}
+		//	if ms != msCur {
+		//		return msCur, nil
+		//	}
 			// Not changed, remove the now invalid stream from the
 			// map.
-			delete(srv.strmap, p)
-		}
+		//	delete(srv.strmap, p)
+		//}
 		// Invalid but not in map. Must have been removed by a disconnect.
+		srv.RemoveSender(p)
 		return nil, err
 	}
 	// All ready to go.
